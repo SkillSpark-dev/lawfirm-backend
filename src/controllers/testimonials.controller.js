@@ -2,35 +2,53 @@ const Testimonial = require("../models/testimonial.model");
 const cloudinary = require("cloudinary").v2;
 const Joi = require("joi");
 
-// Validation Schemas
-const testimonialsSchema = Joi.object({
+// ------------------- VALIDATION SCHEMAS -------------------
+const testimonialSchema = Joi.object({
   name: Joi.string().trim().required(),
   message: Joi.string().trim().required(),
   position: Joi.string().trim().required(),
+  image: Joi.object({
+    public_id: Joi.string().allow("").optional(),
+    url: Joi.string().allow("").optional(),
+  }).optional(),
 });
 
-const testimonialsUpdateSchema = Joi.object({
+const testimonialUpdateSchema = Joi.object({
   name: Joi.string().trim().optional(),
   message: Joi.string().trim().optional(),
   position: Joi.string().trim().optional(),
-});
+  image: Joi.object({
+    public_id: Joi.string().allow("").optional(),
+    url: Joi.string().allow("").optional(),
+  }).optional(),
+}).min(1); // ensure at least one field is updated
+
+// ------------------- CONTROLLERS -------------------
 
 // CREATE
 const createTestimonial = async (req, res, next) => {
   try {
-    const { error, value } = testimonialsSchema.validate(req.body);
+    const { error, value } = testimonialSchema.validate(req.body);
     if (error) {
-      return res
-        .status(400)
-        .json({ message: "Validation failed", details: error.details });
+      return res.status(400).json({
+        message: "Validation failed",
+        details: error.details,
+      });
     }
 
-    const imageData = req.file
-      ? { public_id: req.file.filename, url: req.file.path }
-      : { public_id: "", url: "" };
+    let imageData = { public_id: "", url: "" };
 
-    const newTestimonial = new Testimonial({ ...value, image: imageData });
-    await newTestimonial.save();
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "testimonials",
+      });
+      imageData = { public_id: result.public_id, url: result.secure_url };
+    }
+
+    const newTestimonial = await Testimonial.create({
+      ...value,
+      image: imageData,
+    });
 
     res.status(201).json({
       message: "Testimonial created successfully",
@@ -45,7 +63,10 @@ const createTestimonial = async (req, res, next) => {
 const getAllTestimonials = async (req, res, next) => {
   try {
     const testimonials = await Testimonial.find().sort({ createdAt: -1 });
-    res.status(200).json({ data: testimonials });
+    res.status(200).json({
+      count: testimonials.length,
+      data: testimonials,
+    });
   } catch (err) {
     next(err);
   }
@@ -69,11 +90,12 @@ const updateTestimonial = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const { error, value } = testimonialsUpdateSchema.validate(req.body);
+    const { error, value } = testimonialUpdateSchema.validate(req.body);
     if (error) {
-      return res
-        .status(400)
-        .json({ message: "Validation failed", details: error.details });
+      return res.status(400).json({
+        message: "Validation failed",
+        details: error.details,
+      });
     }
 
     const testimonial = await Testimonial.findById(id);
@@ -86,16 +108,18 @@ const updateTestimonial = async (req, res, next) => {
       if (testimonial.image?.public_id) {
         await cloudinary.uploader.destroy(testimonial.image.public_id);
       }
-      value.image = { public_id: req.file.filename, url: req.file.path };
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "testimonials",
+      });
+      value.image = { public_id: result.public_id, url: result.secure_url };
     }
 
-    const updatedTestimonial = await Testimonial.findByIdAndUpdate(id, value, {
-      new: true,
-    });
+    Object.assign(testimonial, value);
+    await testimonial.save();
 
     res.status(200).json({
       message: "Testimonial updated successfully",
-      data: updatedTestimonial,
+      data: testimonial,
     });
   } catch (err) {
     next(err);

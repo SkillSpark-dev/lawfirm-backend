@@ -85,15 +85,21 @@ const updateAppointment = async (req, res, next) => {
 // DELETE
 const deleteAppointment = async (req, res, next) => {
   try {
-    const appointment = await Appointment.findByIdAndDelete(req.params.id);
-    if (!appointment) {
-      return res.status(404).json({ message: "Appointment not found" });
+    const result = await Appointment.deleteMany({});
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "No appointments found to delete" });
     }
-    res.status(200).json({ message: "Appointment deleted successfully" });
+
+    res.status(200).json({ 
+      message: "All appointments deleted successfully", 
+      deletedCount: result.deletedCount 
+    });
   } catch (err) {
     next(err);
   }
 };
+
 
 const deleteAppointmentById = async (req, res, next) => {
   try {

@@ -6,7 +6,7 @@ const {
   getAppointmentById,
   deleteAppointment,
   updateAppointment,
-} = require("../controllers/appointment.conntroller");
+} = require("../controllers/appointment.controller");
 
 // Create new appointment
 router.post("/", createAppointment);
