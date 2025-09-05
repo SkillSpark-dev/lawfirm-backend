@@ -9,8 +9,9 @@ const contactRouter = require("./contact.route");
 const homeRouter = require("./home.route");
 const infoRouter = require("./info.route");
 const reviewRouter = require("./review.route");
-const testimonialROuter = require("./testimonials.route");
+
 const appointmentRouter = require("./appointment.route");
+const navbarRouter = require("./navbar.route");
 
 const defaultRoutess =[
     {
@@ -49,16 +50,23 @@ const defaultRoutess =[
         path:"/review",
         router:reviewRouter
     },
-    {
-        path:"/testimonial",
-        router:testimonialROuter
-    },
+  
     {
         path:"/appointment",
         router:appointmentRouter
+    },
+    {
+        path:"/navbar",
+        router:navbarRouter
     }
 ]
 defaultRoutess.forEach(route => {
-    router.use(route.path,route.router);
+  if (typeof route.router !== "function" && typeof route.router?.use !== "function") {
+    console.error(`❌ ${route.path} is not a valid router. Got:`, route.router);
+  } else {
+    console.log(`✅ ${route.path} router loaded`);
+    router.use(route.path, route.router);
+  }
 });
+
 module.exports = router;

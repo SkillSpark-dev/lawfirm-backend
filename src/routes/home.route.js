@@ -1,26 +1,29 @@
 const express = require("express");
 const router = express.Router();
-const upload = require("../utils/multer"); // multer or cloudinary upload middleware
+const upload = require("../utils/multer");
 
 const {
   createOrUpdateHome,
   getHome,
-  getHomeById,
   updateHome,
   deleteHome
 } = require("../controllers/home.controller");
 
+// Multer config for multiple fields
+const uploadFields = upload.fields([
+  { name: "bannerImage", maxCount: 1 },
+  { name: "serviceImages", maxCount: 10 },
+  { name: "testimonialImages", maxCount: 10 }
+]);
+
 // Create or Replace Home
-router.post("/", upload.single("image"), createOrUpdateHome);
+router.post("/", uploadFields, createOrUpdateHome);
 
 // Get first Home entry
 router.get("/", getHome);
 
-// Get Home by ID
-router.get("/:id", getHomeById);
-
 // Update Home by ID
-router.put("/:id", upload.single("image"), updateHome);
+router.patch("/:id", uploadFields, updateHome);
 
 // Delete Home by ID
 router.delete("/:id", deleteHome);

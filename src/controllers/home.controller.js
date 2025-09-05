@@ -1,42 +1,71 @@
 const Home = require("../models/home.model");
 const cloudinary = require("cloudinary").v2;
 
+// Helper: upload single file
+const uploadToCloudinary = async (file) => {
+  if (!file) return null;
+  const result = await cloudinary.uploader.upload(file.path, {
+    folder: "lawfirm/home"
+  });
+  return { public_id: result.public_id, url: result.secure_url };
+};
+
 // Create or Replace Home
 const createOrUpdateHome = async (req, res, next) => {
   try {
-    const { caption, title, description, memberCount } = req.body;
+    let { heroSection, services, testimonials } = req.body;
 
-    // Check if there's already a home entry
-    const existingHome = await Home.findOne();
-    if (existingHome) {
-      // Delete old Cloudinary image
-      if (existingHome.image?.public_id) {
-        await cloudinary.uploader.destroy(existingHome.image.public_id);
-      }
-      await existingHome.deleteOne();
+    // Parse JSON strings if sent from multipart/form-data
+    if (typeof heroSection === "string") heroSection = JSON.parse(heroSection);
+    if (typeof services === "string") services = JSON.parse(services);
+    if (typeof testimonials === "string") testimonials = JSON.parse(testimonials);
+
+    // Upload heroSection banner image
+    if (req.files?.bannerImage) {
+      const uploaded = await uploadToCloudinary(req.files.bannerImage[0]);
+      heroSection.bannerImage = uploaded;
     }
 
-    // If a file is uploaded
-    const imageData = req.file
-      ? { public_id: req.file.filename, url: req.file.path }
-      : { public_id: "", url: "" };
+    // Upload services images
+    if (req.files?.services && Array.isArray(services)) {
+      for (let i = 0; i < services.length; i++) {
+        if (req.files.services[i]) {
+          const uploaded = await uploadToCloudinary(req.files.services[i]);
+          services[i].image = uploaded;
+        }
+      }
+    }
 
-    const newHome = new Home({
-      caption,
-      title,
-      description,
-      image: imageData,
-      memberCount
-    });
+    // Upload testimonials images
+    if (req.files?.testimonials && Array.isArray(testimonials)) {
+      for (let i = 0; i < testimonials.length; i++) {
+        if (req.files.testimonials[i]) {
+          const uploaded = await uploadToCloudinary(req.files.testimonials[i]);
+          testimonials[i].clientImage = uploaded;
+        }
+      }
+    }
 
-    await newHome.save();
-    res.status(201).json({ message: "Home created/updated successfully", data: newHome });
+    // Check if a home entry exists
+    let home = await Home.findOne();
+    if (home) {
+      home = await Home.findOneAndUpdate(
+        {},
+        { heroSection, services, testimonials },
+        { new: true }
+      );
+    } else {
+      home = new Home({ heroSection, services, testimonials });
+      await home.save();
+    }
+
+    res.status(201).json({ message: "Home created/updated successfully", data: home });
   } catch (error) {
     next(error);
   }
 };
 
-// Get first home record
+// Get Home
 const getHome = async (req, res, next) => {
   try {
     const home = await Home.findOne();
@@ -47,36 +76,44 @@ const getHome = async (req, res, next) => {
   }
 };
 
-// Get home by ID
-const getHomeById = async (req, res, next) => {
-  try {
-    const home = await Home.findById(req.params.id);
-    if (!home) return res.status(404).json({ message: "Home not found" });
-    res.status(200).json({ data: home });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Update home by ID
+// Update Home by ID
 const updateHome = async (req, res, next) => {
   try {
-    const { caption, title, description, memberCount } = req.body;
+    let { heroSection, services, testimonials } = req.body;
+    if (typeof heroSection === "string") heroSection = JSON.parse(heroSection);
+    if (typeof services === "string") services = JSON.parse(services);
+    if (typeof testimonials === "string") testimonials = JSON.parse(testimonials);
+
     const home = await Home.findById(req.params.id);
     if (!home) return res.status(404).json({ message: "Home not found" });
 
-    // If new image is uploaded
-    if (req.file) {
-      if (home.image?.public_id) {
-        await cloudinary.uploader.destroy(home.image.public_id);
-      }
-      home.image = { public_id: req.file.filename, url: req.file.path };
+    // Handle new uploads (same as create)
+    if (req.files?.bannerImage) {
+      const uploaded = await uploadToCloudinary(req.files.bannerImage[0]);
+      heroSection.bannerImage = uploaded;
     }
 
-    home.caption = caption;
-    home.title = title;
-    home.description = description;
-    home.memberCount = memberCount;
+    if (req.files?.services && Array.isArray(services)) {
+      for (let i = 0; i < services.length; i++) {
+        if (req.files.services[i]) {
+          const uploaded = await uploadToCloudinary(req.files.services[i]);
+          services[i].image = uploaded;
+        }
+      }
+    }
+
+    if (req.files?.testimonials && Array.isArray(testimonials)) {
+      for (let i = 0; i < testimonials.length; i++) {
+        if (req.files.testimonials[i]) {
+          const uploaded = await uploadToCloudinary(req.files.testimonials[i]);
+          testimonials[i].clientImage = uploaded;
+        }
+      }
+    }
+
+    home.heroSection = heroSection || home.heroSection;
+    home.services = services || home.services;
+    home.testimonials = testimonials || home.testimonials;
 
     await home.save();
     res.status(200).json({ message: "Home updated successfully", data: home });
@@ -85,14 +122,21 @@ const updateHome = async (req, res, next) => {
   }
 };
 
-// Delete home by ID
+// Delete Home by ID
 const deleteHome = async (req, res, next) => {
   try {
     const home = await Home.findById(req.params.id);
     if (!home) return res.status(404).json({ message: "Home not found" });
 
-    if (home.image?.public_id) {
-      await cloudinary.uploader.destroy(home.image.public_id);
+    // Delete images from Cloudinary
+    if (home.heroSection?.bannerImage?.public_id) {
+      await cloudinary.uploader.destroy(home.heroSection.bannerImage.public_id);
+    }
+    for (const s of home.services) {
+      if (s.image?.public_id) await cloudinary.uploader.destroy(s.image.public_id);
+    }
+    for (const t of home.testimonials) {
+      if (t.clientImage?.public_id) await cloudinary.uploader.destroy(t.clientImage.public_id);
     }
 
     await home.deleteOne();
@@ -105,7 +149,6 @@ const deleteHome = async (req, res, next) => {
 module.exports = {
   createOrUpdateHome,
   getHome,
-  getHomeById,
   updateHome,
   deleteHome
 };
