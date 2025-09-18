@@ -1,77 +1,94 @@
-const Joi = require('joi')
-const Contact = require("../models/contact.model");
-const dotenv = require("dotenv");
 
-dotenv.config({ quiet: true });
+const Contact = require("../models/contact.model");
+const Joi = require("joi");
+
 const contactSchema = Joi.object({
-  name: Joi.string().trim().required(),
-  email: Joi.string().trim().required(),
-  subject: Joi.string().trim().optional(),
-  message: Joi.string().trim().required()
-})
-// Create contact message
-const createContact = async (req, res, next) => {
+  name: Joi.string().required(),
+  email: Joi.string().email().required(),
+  message: Joi.string().required(),
+  number: Joi.string().allow("").optional() // ✅ Must allow empty
+});
+
+
+
+exports.createContact = async (req, res) => {
   try {
-    const { name, email, subject, message } = req.body;
+    const { name, email, message, number } = req.body;
 
     if (!name || !email || !message) {
-      return res.status(400).json({ message: "Name, email, and message are required" });
+      return res.status(400).json({
+        success: false,
+        message: "Name, email and message are required",
+      });
     }
 
-    const newContact = new Contact({
-      name,
-      email,
-      subject,
-      message
-    });
+    const contact = await Contact.create({ name, email, message, number });
 
-    await newContact.save();
-    res.status(201).json({ message: "Contact message received successfully", data: newContact });
+    res.status(201).json({
+      success: true,
+      message: "Contact submitted successfully",
+      data: contact,
+    });
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create contact",
+      error: error.message,
+    });
   }
 };
 
-// Get all contact messages (optional, admin use)
-const getAllContacts = async (req, res, next) => {
+// @desc    Get all contacts
+exports.getAllContacts = async (req, res) => {
   try {
     const contacts = await Contact.find().sort({ createdAt: -1 });
-    res.status(200).json({ data: contacts });
+    res.status(200).json({
+      success: true,
+      count: contacts.length,
+      data: contacts,
+    });
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch contacts",
+      error: error.message,
+    });
   }
 };
 
-//get contact by id
-const getContactById = async (req, res, next) => {
+// @desc    Get single contact by ID
+exports.getContactById = async (req, res) => {
   try {
     const contact = await Contact.findById(req.params.id);
     if (!contact) {
-      return res.status(404).json({ message: "Contact is not found" });
+      return res.status(404).json({ success: false, message: "Contact not found" });
     }
-    res.status(200).json({ data: contact });
+    res.status(200).json({ success: true, data: contact });
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch contact",
+      error: error.message,
+    });
   }
 };
 
-const deleteContact = async (req, res, next) => {
+// @desc    Delete a contact
+exports.deleteContact = async (req, res) => {
   try {
-    const contact= await Contact.findById(req.params.id);
+    const contact = await Contact.findByIdAndDelete(req.params.id);
     if (!contact) {
-      return res.status(404).json({ message: "contact is not found" });
+      return res.status(404).json({ success: false, message: "Contact not found" });
     }
-
-    await contact.deleteOne();
-    res.status(200).json({ message: "Contact is deleted successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Contact deleted successfully",
+    });
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete contact",
+      error: error.message,
+    });
   }
-};
-
-module.exports = {
-  createContact,
-  getAllContacts,
-  getContactById,
-  deleteContact
 };

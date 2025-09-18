@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const upload = require("../utils/multer");
+const upload= require("../utils/multer");
 
 const {
   createOrUpdateHome,
@@ -8,6 +8,7 @@ const {
   updateHome,
   deleteHome
 } = require("../controllers/home.controller");
+const isAuthenticated = require("../middlewares/authentication");
 
 // Multer config for multiple fields
 const uploadFields = upload.fields([
@@ -17,15 +18,15 @@ const uploadFields = upload.fields([
 ]);
 
 // Create or Replace Home
-router.post("/", uploadFields, createOrUpdateHome);
+router.post("/", isAuthenticated,uploadFields, createOrUpdateHome);
 
 // Get first Home entry
-router.get("/", getHome);
+router.get("/",isAuthenticated, getHome);
 
 // Update Home by ID
-router.patch("/:id", uploadFields, updateHome);
+router.patch("/:id",isAuthenticated, uploadFields, updateHome);
 
 // Delete Home by ID
-router.delete("/:id", deleteHome);
+router.delete("/:id",isAuthenticated, deleteHome);
 
 module.exports = router;

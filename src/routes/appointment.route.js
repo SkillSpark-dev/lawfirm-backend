@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+
 const {
   createAppointment,
   getAllAppointments,
@@ -8,23 +9,15 @@ const {
   updateAppointment,
 } = require("../controllers/appointment.controller");
 
-// Create new appointment
+const isAuthenticated = require("../middlewares/authentication");
+
+// 🟢 PUBLIC ROUTE (Visitors can create appointments)
 router.post("/", createAppointment);
 
-// Get all appointments
-router.get("/", getAllAppointments);
-
-// Get single appointment by ID
-router.get("/:id", getAppointmentById);
-
-// Update appointment
-router.put("/:id", updateAppointment);
-
-// Delete appointment by id
-router.delete("/", deleteAppointment);
- //Delete appointment by user id
- router.delete("/:id", deleteAppointment);
-
+// 🔒 ADMIN ROUTES (Protected)
+router.get("/", isAuthenticated, getAllAppointments);
+router.get("/:id", isAuthenticated, getAppointmentById);
+router.put("/:id", isAuthenticated, updateAppointment);
+router.delete("/:id", isAuthenticated, deleteAppointment);
 
 module.exports = router;
- 

@@ -1,27 +1,17 @@
-const express = require("express");
+const express  = require("express");
 const router = express.Router();
-
 const {
-  createInfo,
-  getAllInfo,
-  getInfoById,
-  updateInfo,
-  deleteInfo
+    createInfo,
+    getInfo,
+    updateInfo,
+    deleteInfo
 } = require("../controllers/info.controller");
+const isAuthenticated  = require("../middlewares/authentication");
+const upload  = require("../utils/multer");
 
-// Create new info
-router.post("/", createInfo);
-
-// Get all info entries
-router.get("/", getAllInfo);
-
-// Get single info by ID
-router.get("/:id", getInfoById);
-
-// Update info by ID
-router.put("/:id", updateInfo);
-
-// Delete info by ID
-router.delete("/:id", deleteInfo);
+router.post("/", isAuthenticated, upload.single("image"), createInfo);
+router.get("/", getInfo);
+router.patch("/:id", isAuthenticated, upload.single("image"), updateInfo);
+router.delete("/:id", isAuthenticated, deleteInfo);
 
 module.exports = router;

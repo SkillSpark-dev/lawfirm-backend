@@ -1,15 +1,32 @@
-const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('./cloudinary');
+const multer = require("multer");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("./cloudinary"); // your configured cloudinary instance
 
+// Configure Cloudinary storage
 const storage = new CloudinaryStorage({
-    cloudinary,
-    params: {
-        folder: 'about_features', // Cloudinary folder
-        allowed_formats: ['jpg', 'png', 'jpeg', 'webp']
-    }
+  cloudinary,
+  params: (req, file) => ({
+    folder: req.body.folder || "general_uploads",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    transformation: [{ quality: "auto", fetch_format: "auto" }], // optional optimization
+  }),
 });
 
-const upload = multer({ storage });
+// File filter
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type. Only JPG, PNG, and WEBP are allowed."));
+  }
+};
 
-module.exports = upload;
+// Multer instance
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+});
+
+module.exports = upload ;

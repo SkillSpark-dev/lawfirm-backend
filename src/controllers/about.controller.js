@@ -1,69 +1,93 @@
-const About = require("../models/about.model");
+const About = require("../models/about.hero.model");
+const cloudinary = require("../utils/cloudinary");
 
-// Create or Update About stats
-const createOrUpdateAbout = async (req, res, next) => {
+// @access  Public
+const getAbout = async (req, res) => {
   try {
-    const { client, successCase, professionalLawyer } = req.body;
+    const about = await About.findOne().sort({ createdAt: -1 });
+    if (!about) {
+      return res.status(404).json({ success: false, message: "About data not found" });
+    }
+    res.status(200).json({ success: true, data: about });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
 
-    let about = await About.findOne();
+// @access  Admin
+const createAbout = async (req, res) => {
+  try {
   
 
-    if (about) {
-      // Update existing
-      about.client = client !== undefined ? client : about.client;
-      about.successCase = successCase !== undefined ? successCase : about.successCase;
-      about.professionalLawyer = professionalLawyer !== undefined ? professionalLawyer : about.professionalLawyer;
+    const imageFile = req.files?.image?.[0];
+    const image = imageFile
+      ? { public_id: imageFile.filename, url: imageFile.path }
+      : { public_id: "", url: "" };
 
-      await about.save();
-      return res.status(200).json({ message: "About updated successfully", data: about });
-    }
-
-    // Create new
-    const newAbout = new About({
-      client,
-      successCase,
-      professionalLawyer
+    const about = await About.create({
+      title: req.body.title,
+      subtitle: req.body.subtitle,
+      image,
+      stats: req.body.stats ? JSON.parse(req.body.stats) : [],
     });
 
-    await newAbout.save();
-    res.status(201).json({ message: "About created successfully", data: newAbout });
-
+    res.status(201).json({ success: true, data: about });
   } catch (error) {
-    next(error);
+    console.error("Create About Error:", error);
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Get About stats
-const getAbout = async (req, res, next) => {
+// @access  Admin
+const updateAbout = async (req, res) => {
   try {
-    const about = await About.findOne();
-    if (!about) {
-      return res.status(200).json({ message: "No about data found" });
+    const about = await About.findById(req.params.id);
+    if (!about) return res.status(404).json({ success: false, message: "About not found" });
+
+    // Update image if uploaded
+    if (req.files?.image) {
+      if (about.image.public_id) {
+        await cloudinary.uploader.destroy(about.image.public_id);
+      }
+      const file = req.files.image[0];
+      about.image = { public_id: file.filename, url: file.path };
     }
 
-    res.status(200).json({ data: about });
-  } catch (error) {
-    next(error);
-  }
-};
+    about.title = req.body.title || about.title;
+    about.subtitle = req.body.subtitle || about.subtitle;
 
-// Delete About
-const deleteAbout = async (req, res, next) => {
-  try {
-    const about = await About.findOne();
-    if (!about) {
-      return res.status(404).json({ message: "No about data found" });
+    // Convert stats object to array if needed
+    if (req.body.stats) {
+      // req.body.stats may come as {0: {...}, 1: {...}} due to FormData
+      about.stats = Array.isArray(req.body.stats)
+        ? req.body.stats
+        : Object.values(req.body.stats);
     }
 
-    await About.deleteOne({ _id: about._id });
-    res.status(200).json({ message: "About deleted successfully" });
+    await about.save();
+    res.status(200).json({ success: true, data: about });
   } catch (error) {
-    next(error);
+    console.error(error);
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-module.exports = {
-  createOrUpdateAbout,
-  getAbout,
-  deleteAbout
+// @access  Admin
+const deleteAbout = async (req, res) => {
+  try {
+    const about = await About.findById(req.params.id);
+    if (!about) return res.status(404).json({ success: false, message: "About not found" });
+
+    if (about.image.public_id) {
+      await cloudinary.uploader.destroy(about.image.public_id);
+    }
+
+    await about.remove();
+    res.status(200).json({ success: true, message: "About deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
 };
+module.exports = { getAbout, createAbout, updateAbout, deleteAbout };

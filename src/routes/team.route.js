@@ -8,22 +8,16 @@ const {
   updateTeamMember,
   deleteTeamMember,
 } = require("../controllers/team.controller");
+const isAuthenticated = require("../middlewares/authentication");
+const upload = require("../utils/multer");
 
-const upload = require("../utils/multer"); 
-
-// Create new team member (with image)
-router.post("/", upload.single("image"), createTeamMember);
-
-// Get all team members
+// 🟢 PUBLIC ROUTES (Visitors can view team without login)
 router.get("/", getAllTeamMembers);
-
-// Get single team member by ID
 router.get("/:id", getTeamMemberById);
 
-// Update team member (optional new image)
-router.patch("/:id", upload.single("image"), updateTeamMember);
-
-// Delete team member
-router.delete("/:id", deleteTeamMember);
+// 🔒 ADMIN ROUTES (Protected with Authentication)
+router.post("/", isAuthenticated, upload.single("image"), createTeamMember);
+router.patch("/:id", isAuthenticated, upload.single("image"), updateTeamMember);
+router.delete("/:id", isAuthenticated, deleteTeamMember);
 
 module.exports = router;

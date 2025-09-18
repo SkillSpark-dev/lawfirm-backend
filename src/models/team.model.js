@@ -27,26 +27,21 @@ const teamSchema = new mongoose.Schema({
     }
   },
   socialLinks: {
-    linkedin: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    twitter: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    facebook: {
-      type: String,
-      trim: true,
-      default: ""
-    },
-    instagram: {
-      type: String,
-      trim: true,
-      default: ""
-    }
+   linkedin: {
+  type: String,
+  trim: true,
+  default: "",
+  match: /^https?:\/\/.+/  // ensures valid URL
+},
+facebook: {
+  type: String,
+  trim: true,
+  default: "",
+  match: /^https?:\/\/.+/
+}
+
+    ,
+   
   },
   createdAt: {
     type: Date,

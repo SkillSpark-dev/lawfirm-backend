@@ -12,18 +12,15 @@ const contactSchema = new mongoose.Schema({
     trim: true,
     lowercase: true
   },
-  subject: {
-    type: String,
-    trim: true,
-    default: ""
-  },
+  
   message: {
     type: String,
     required: true,
     trim: true
   },
   number:{
-    type: Number
+    type: String,
+    trim: true
   },
   createdAt: {
     type: Date,

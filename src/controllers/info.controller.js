@@ -1,98 +1,89 @@
-const Joi = require('joi');
 const Info = require("../models/info.model");
+const cloudinary = require("../utils/cloudinary");
 
-// Validation schema
-const infoSchema = Joi.object({
-  email: Joi.string().trim().email().required(),
-  phone: Joi.string().trim().required(),
-  address: Joi.string().trim().required(),
-  links: Joi.object({
-    facebook: Joi.string().allow("").optional(),
-    linkedIn: Joi.string().allow("").optional()
-  }).optional()
-});
-
-// Create info
 const createInfo = async (req, res, next) => {
   try {
-    const { error, value } = infoSchema.validate(req.body, {
-      allowUnknown: true,
-      stripUnknown: true,
-      abortEarly: true
-    });
+    const { title, description, buttonText, buttonLink } = req.body;
 
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.details[0].message
-      });
+    if (!req.file) {
+      return res.status(400).json({ message: "Image is required" });
     }
 
-    const newInfo = new Info(value);
-    await newInfo.save();
-    res.status(201).json({ message: "Info created successfully", data: newInfo });
+    const uploaded = await cloudinary.uploader.upload(req.file.path, {
+      folder: "info",
+    });
+
+    const info = await Info.create({
+      title,
+      description,
+      buttonText,
+      buttonLink,
+      image: {
+        public_id: uploaded.public_id,
+        url: uploaded.secure_url,
+      },
+    });
+
+    res.status(201).json({ data: info });
   } catch (err) {
     next(err);
   }
 };
 
-// Get all info entries
-const getAllInfo = async (req, res, next) => {
+const getInfo = async (req, res, next) => {
   try {
-    const infos = await Info.find();
+    const infos = await Info.find().sort({ createdAt: -1 });
     res.status(200).json({ data: infos });
   } catch (err) {
     next(err);
   }
 };
 
-// Get single info by ID
-const getInfoById = async (req, res, next) => {
-  try {
-    const info = await Info.findById(req.params.id);
-    if (!info) {
-      return res.status(404).json({ message: "Info not found" });
-    }
-    res.status(200).json({ data: info });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Update info by ID
 const updateInfo = async (req, res, next) => {
   try {
-    const { error, value } = infoSchema.validate(req.body, {
-      allowUnknown: true,
-      stripUnknown: true,
-      abortEarly: true
+    const { title, description, buttonText, buttonLink } = req.body;
+    let updateData = { title, description, buttonText, buttonLink };
+
+    if (req.file) {
+      // Optional: Find old info to delete image from Cloudinary
+      const oldInfo = await Info.findById(req.params.id);
+      if (oldInfo && oldInfo.image?.public_id) {
+        await cloudinary.uploader.destroy(oldInfo.image.public_id);
+      }
+
+      const uploaded = await cloudinary.uploader.upload(req.file.path, {
+        folder: "info",
+      });
+      updateData.image = {
+        public_id: uploaded.public_id,
+        url: uploaded.secure_url,
+      };
+    }
+
+    const updated = await Info.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
     });
 
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.details[0].message
-      });
-    }
+    if (!updated) return res.status(404).json({ message: "Info not found" });
 
-    const info = await Info.findByIdAndUpdate(req.params.id, value, { new: true });
-    if (!info) {
-      return res.status(404).json({ message: "Info not found" });
-    }
-
-    res.status(200).json({ message: "Info updated successfully", data: info });
+    res.status(200).json({ data: updated });
   } catch (err) {
     next(err);
   }
 };
 
-// Delete info by ID
 const deleteInfo = async (req, res, next) => {
   try {
-    const info = await Info.findByIdAndDelete(req.params.id);
-    if (!info) {
-      return res.status(404).json({ message: "Info not found" });
+    const deleted = await Info.findByIdAndDelete(req.params.id);
+
+    if (!deleted) return res.status(404).json({ message: "Info not found" });
+
+    // Optional: delete image from Cloudinary
+    if (deleted.image?.public_id) {
+      await cloudinary.uploader.destroy(deleted.image.public_id);
     }
+
     res.status(200).json({ message: "Info deleted successfully" });
   } catch (err) {
     next(err);
@@ -101,8 +92,7 @@ const deleteInfo = async (req, res, next) => {
 
 module.exports = {
   createInfo,
-  getAllInfo,
-  getInfoById,
+  getInfo,
   updateInfo,
-  deleteInfo
+  deleteInfo,
 };
