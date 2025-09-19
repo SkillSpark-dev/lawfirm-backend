@@ -1,10 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const {
-  createAbout,
-  updateAbout,
-  getAbout,
-  deleteAbout,
+  getAbout, createAbout, updateAbout, deleteAbout  
 } = require("../controllers/about.controller");
 const isAuthenticated = require("../middlewares/authentication");
 const upload  = require("../utils/multer"); // ✅ import multer

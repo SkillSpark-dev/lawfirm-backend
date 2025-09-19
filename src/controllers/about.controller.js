@@ -18,18 +18,19 @@ const getAbout = async (req, res) => {
 // @access  Admin
 const createAbout = async (req, res) => {
   try {
-  
-
-    const imageFile = req.files?.image?.[0];
-    const image = imageFile
-      ? { public_id: imageFile.filename, url: imageFile.path }
+    // ✅ If using upload.single("image")
+    const file = req.file;
+    const image = file
+      ? { public_id: file.filename, url: file.path }
       : { public_id: "", url: "" };
+
+    const stats = req.body.stats ? JSON.parse(req.body.stats) : [];
 
     const about = await About.create({
       title: req.body.title,
       subtitle: req.body.subtitle,
       image,
-      stats: req.body.stats ? JSON.parse(req.body.stats) : [],
+      stats,
     });
 
     res.status(201).json({ success: true, data: about });
@@ -45,30 +46,31 @@ const updateAbout = async (req, res) => {
     const about = await About.findById(req.params.id);
     if (!about) return res.status(404).json({ success: false, message: "About not found" });
 
-    // Update image if uploaded
-    if (req.files?.image) {
-      if (about.image.public_id) {
+    // ✅ Handle new image upload
+    if (req.file) {
+      if (about.image?.public_id) {
         await cloudinary.uploader.destroy(about.image.public_id);
       }
-      const file = req.files.image[0];
-      about.image = { public_id: file.filename, url: file.path };
+      about.image = { public_id: req.file.filename, url: req.file.path };
     }
 
+    // ✅ Safely update fields
     about.title = req.body.title || about.title;
     about.subtitle = req.body.subtitle || about.subtitle;
 
-    // Convert stats object to array if needed
+    // ✅ Parse stats
     if (req.body.stats) {
-      // req.body.stats may come as {0: {...}, 1: {...}} due to FormData
-      about.stats = Array.isArray(req.body.stats)
-        ? req.body.stats
-        : Object.values(req.body.stats);
+      try {
+        about.stats = JSON.parse(req.body.stats);
+      } catch (err) {
+        console.error("Failed to parse stats", err);
+      }
     }
 
     await about.save();
     res.status(200).json({ success: true, data: about });
   } catch (error) {
-    console.error(error);
+    console.error("Update About Error:", error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -79,15 +81,16 @@ const deleteAbout = async (req, res) => {
     const about = await About.findById(req.params.id);
     if (!about) return res.status(404).json({ success: false, message: "About not found" });
 
-    if (about.image.public_id) {
+    if (about.image?.public_id) {
       await cloudinary.uploader.destroy(about.image.public_id);
     }
 
-    await about.remove();
+    await about.deleteOne();
     res.status(200).json({ success: true, message: "About deleted successfully" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
 module.exports = { getAbout, createAbout, updateAbout, deleteAbout };
