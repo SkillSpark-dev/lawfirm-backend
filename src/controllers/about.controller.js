@@ -43,6 +43,7 @@ const createAbout = async (req, res) => {
 // @access  Admin
 const updateAbout = async (req, res) => {
   try {
+    
     const about = await About.findById(req.params.id);
     if (!about) return res.status(404).json({ success: false, message: "About not found" });
 
