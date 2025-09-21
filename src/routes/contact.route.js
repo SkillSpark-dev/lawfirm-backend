@@ -4,7 +4,7 @@ const router = express.Router();
 const { createContact, getAllContacts,getContactById, deleteContact } = require("../controllers/contact.controller");
  const isAuthenticated = require("../middlewares/authentication");
 // POST - Submit contact form
-router.post("/",isAuthenticated, createContact);
+router.post("/", createContact);
 
 // GET - Get all contacts (for admin, optionally secure this route)
 router.get("/",isAuthenticated, getAllContacts);
