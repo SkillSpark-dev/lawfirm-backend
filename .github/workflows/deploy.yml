@@ -7,10 +7,9 @@ on:
 
 env:
   AWS_REGION: ap-southeast-1
-  ECR_REGISTRY: 423623836938.dkr.ecr.ap-southeast-1.amazonaws.com/lafirm-backend
+  ECR_REGISTRY: 423623836938.dkr.ecr.ap-southeast-1.amazonaws.com
   ECR_REPOSITORY: lafirm-backend
   IMAGE_TAG: latest
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
