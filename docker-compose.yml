@@ -24,7 +24,7 @@ services:
     depends_on:
       - mongo
     ports:
-      - "8092:8092"
+      - "8092:${PORT}"
     networks:
       - app_network
 
