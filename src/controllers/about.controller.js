@@ -10,7 +10,7 @@ const getAbout = async (req, res) => {
     }
     res.status(200).json({ success: true, data: about });
   } catch (error) {
-    console.error(error);
+    
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -35,7 +35,7 @@ const createAbout = async (req, res) => {
 
     res.status(201).json({ success: true, data: about });
   } catch (error) {
-    console.error("Create About Error:", error);
+   
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -64,14 +64,14 @@ const updateAbout = async (req, res) => {
       try {
         about.stats = JSON.parse(req.body.stats);
       } catch (err) {
-        console.error("Failed to parse stats", err);
+        next(err);
       }
     }
 
     await about.save();
     res.status(200).json({ success: true, data: about });
   } catch (error) {
-    console.error("Update About Error:", error);
+   
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -89,7 +89,7 @@ const deleteAbout = async (req, res) => {
     await about.deleteOne();
     res.status(200).json({ success: true, message: "About deleted successfully" });
   } catch (error) {
-    console.error(error);
+    
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
