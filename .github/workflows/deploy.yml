@@ -1,0 +1,75 @@
+name: Deploy Backend to EC2 via ECR
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REGISTRY: 423623836938.dkr.ecr.ap-southeast-1.amazonaws.com/lafirm-backend
+  ECR_REPOSITORY: lafirm-backend
+  IMAGE_TAG: latest
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Docker Image to ECR
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Save SSH Key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+
+      - name: Upload docker-compose-prod.yml to EC2
+        run: |
+          scp -o StrictHostKeyChecking=no -i private_key.pem docker-compose-prod.yml ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS }}:/home/ubuntu/tecnospire-projects/lafirm/backend/
+
+      - name: Upload .env file to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cat <<EOF > /home/ubuntu/tecnospire-projects/lawfirm/backend/.env
+            ${{ secrets.ENV_FILE }}
+            EOF
+
+      - name: SSH to EC2 and deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            export AWS_REGION=ap-southeast-1
+            export ECR_REGISTRY=423623836938.dkr.ecr.ap-southeast-1.amazonaws.com
+
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+            cd /home/ubuntu/tecnospire-projects/lawfirm/backend
+
+            docker-compose -f docker-compose-prod.yml pull
+            docker-compose -f docker-compose-prod.yml down
+            docker-compose -f docker-compose-prod.yml up -d --remove-orphans
+
+            docker image prune -f
