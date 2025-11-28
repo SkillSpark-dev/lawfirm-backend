@@ -6,11 +6,12 @@ const getAbout = async (req, res) => {
   try {
     const about = await About.findOne().sort({ createdAt: -1 });
     if (!about) {
-      return res.status(404).json({ success: false, message: "About data not found" });
+      return res
+        .status(2001)
+        .json({ success: false, message: "About data not found" });
     }
     res.status(200).json({ success: true, data: about });
   } catch (error) {
-    
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -35,7 +36,6 @@ const createAbout = async (req, res) => {
 
     res.status(201).json({ success: true, data: about });
   } catch (error) {
-   
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -43,9 +43,11 @@ const createAbout = async (req, res) => {
 // @access  Admin
 const updateAbout = async (req, res) => {
   try {
-    
     const about = await About.findById(req.params.id);
-    if (!about) return res.status(404).json({ success: false, message: "About not found" });
+    if (!about)
+      return res
+        .status(404)
+        .json({ success: false, message: "About not found" });
 
     // ✅ Handle new image upload
     if (req.file) {
@@ -71,7 +73,6 @@ const updateAbout = async (req, res) => {
     await about.save();
     res.status(200).json({ success: true, data: about });
   } catch (error) {
-   
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -80,16 +81,20 @@ const updateAbout = async (req, res) => {
 const deleteAbout = async (req, res) => {
   try {
     const about = await About.findById(req.params.id);
-    if (!about) return res.status(404).json({ success: false, message: "About not found" });
+    if (!about)
+      return res
+        .status(404)
+        .json({ success: false, message: "About not found" });
 
     if (about.image?.public_id) {
       await cloudinary.uploader.destroy(about.image.public_id);
     }
 
     await about.deleteOne();
-    res.status(200).json({ success: true, message: "About deleted successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "About deleted successfully" });
   } catch (error) {
-    
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
